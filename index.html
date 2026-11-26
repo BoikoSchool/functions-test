@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Зошит шифрувальника — самостійна з функцій у Python</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link id="fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Caveat:wght@600&display=swap">
+<style>
+:root{
+  --paper:#F1F4F2; --grid:#D7E2EC; --sheet:#FFFFFF;
+  --ink:#1B2A6B; --ink-2:#3A4783; --ink-muted:#626C96; --ink-deep:#121D52;
+  --margin:#E2574C; --marker:#FFE45C; --leaf:#2E8B57;
+  --code-bg:#F3F6FC; --code-line:#DCE3F2;
+  --f-head:"Unbounded", "Arial Black", sans-serif;
+  --f-body:"Golos Text", system-ui, sans-serif;
+  --f-code:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --f-hand:"Caveat", "Segoe Print", cursive;
+  --cell:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:17px/1.55 var(--f-body);font-kerning:normal;color:var(--ink);background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:var(--cell) var(--cell);}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+pre,code,textarea,.mono,.strips .t,.line-input,table.trace input,.run-out,.editor .out{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+code{font-family:var(--f-code);font-size:.88em;background:var(--code-bg);border:1px solid var(--code-line);border-radius:5px;padding:0 5px;white-space:nowrap}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- Кнопки й поля ---------- */
+.btn{border:2px solid var(--ink);background:var(--ink);color:#fff;border-radius:12px;padding:11px 22px;font-weight:600;letter-spacing:.01em}
+.btn:hover{background:var(--ink-deep)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.line{background:transparent;color:var(--ink)}
+.btn.line:hover{background:#E8ECF7}
+.btn.sm{padding:6px 14px;font-size:15px;border-radius:10px}
+.field{width:100%;border:0;border-bottom:2px solid var(--ink);background:transparent;padding:6px 2px;font-size:20px;font-weight:500}
+.field:focus{outline:none;border-bottom-color:var(--margin)}
+.box{width:100%;border:2px solid var(--code-line);border-radius:12px;background:#fff;padding:10px 12px}
+.box:focus{outline:none;border-color:var(--ink)}
+.msg{border-left:4px solid var(--ink);background:#E8ECF7;padding:10px 14px;border-radius:0 10px 10px 0;margin:14px 0;font-size:15px}
+.msg.bad{border-color:var(--margin);background:#FCE9E7;color:#7A1F17}
+.msg.good{border-color:var(--leaf);background:#E3F2E9;color:#174B2E}
+
+/* ---------- Обкладинка (старт) ---------- */
+.cover-wrap{min-height:100vh;display:grid;place-items:center;padding:32px 16px}
+.cover{width:min(560px,100%);background:var(--ink);color:#fff;border-radius:8px 22px 22px 8px;padding:40px 36px 34px;position:relative;
+  box-shadow:-10px 0 0 0 var(--ink-deep) inset, 0 24px 50px -24px rgba(27,42,107,.55)}
+.cover h1{font-family:var(--f-head);font-weight:700;font-size:clamp(28px,6vw,40px);line-height:1.05;margin:0 0 6px;letter-spacing:-.01em}
+.cover .sub{color:#C9D1F2;margin:0 0 26px;max-width:34ch}
+.label{background:#fff;color:var(--ink);border-radius:14px;padding:22px 24px 24px;position:relative}
+.label::before{content:"";position:absolute;inset:7px;border:1.5px solid var(--ink);border-radius:10px;pointer-events:none;opacity:.35}
+.label .title{font-family:var(--f-head);font-weight:500;font-size:15px;text-align:center;margin-bottom:10px}
+.label .row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:end;margin-top:12px}
+.label .row span{font-size:15px;color:var(--ink-muted);padding-bottom:9px}
+.cover .rules{color:#C9D1F2;font-size:15px;margin:22px 0 22px}
+.cover .rules b{color:#fff}
+.cover .btn{background:var(--marker);border-color:var(--marker);color:var(--ink);font-size:18px;width:100%;padding:14px}
+.cover .btn:hover{background:#FFEA80}
+.cover .msg{background:rgba(255,255,255,.1);color:#fff;border-color:var(--marker)}
+.cover .msg.bad{background:rgba(226,87,76,.18);border-color:var(--margin);color:#fff}
+
+/* ---------- Робота: обкладинка-панель + сторінка ---------- */
+.work{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:100vh}
+.rail{background:var(--ink);color:#fff;padding:26px 22px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;gap:18px}
+.rail .who{font-weight:600;font-size:17px;line-height:1.3}
+.rail .cls{color:#C9D1F2;font-size:15px}
+.rail .var{display:flex;align-items:baseline;gap:10px}
+.rail .var b{font-family:var(--f-head);font-size:54px;line-height:1;color:var(--marker)}
+.rail .var span{color:#C9D1F2;font-size:15px}
+.clock{font-family:var(--f-head);font-weight:500;font-size:30px;letter-spacing:.02em}
+.clock.low{color:#FF9A90}
+.clock small{display:block;font-family:var(--f-body);font-size:14px;color:#C9D1F2;letter-spacing:0;font-weight:400}
+.toc{list-style:none;margin:4px 0 0;padding:0;border-top:1px solid rgba(255,255,255,.18)}
+.toc button{width:100%;display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;text-align:left;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.18);color:#DDE3FA;padding:10px 4px;font-size:15px}
+.toc button:hover{background:rgba(255,255,255,.06)}
+.toc button[aria-current="true"]{color:#fff;font-weight:600}
+.toc button[aria-current="true"] .n{background:var(--marker);color:var(--ink)}
+.toc .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1.5px solid rgba(255,255,255,.5);font-size:13px;font-weight:600}
+.toc .ok{color:var(--marker);font-size:18px;visibility:hidden}
+.toc .done .ok{visibility:visible}
+.rail .py{font-size:13px;color:#C9D1F2;margin-top:auto}
+.rail .submit{background:var(--marker);border-color:var(--marker);color:var(--ink);width:100%}
+.rail .submit:hover{background:#FFEA80}
+
+.page-wrap{padding:28px clamp(12px,3vw,40px) 60px}
+.page{max-width:860px;margin:0 auto;background:var(--sheet);border-radius:6px;position:relative;
+  padding:34px 34px 30px 92px;min-height:70vh;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:var(--cell) var(--cell);background-color:#fff;
+  box-shadow:0 1px 0 #C6D2DE,0 18px 40px -30px rgba(27,42,107,.45)}
+.page::before{content:"";position:absolute;top:0;bottom:0;left:66px;width:2px;background:var(--margin);opacity:.8}
+.page .margin{position:absolute;left:0;width:62px;top:34px;text-align:center;font-family:var(--f-hand);color:var(--margin);font-size:22px;line-height:1.1}
+.page .margin big{display:block;font-size:40px}
+.page .margin small{display:block;font-size:16px;line-height:1;margin-top:4px}
+.page h2{font-family:var(--f-head);font-weight:700;font-size:clamp(22px,3.2vw,30px);line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+.page h3{font-size:17px;font-weight:600;margin:22px 0 8px}
+.page p{margin:8px 0;max-width:70ch}
+.page .lead{color:var(--ink-2)}
+.page ul{margin:8px 0;padding-left:22px;max-width:70ch}
+.hint{color:var(--ink-muted);font-size:15px}
+pre.code{font-family:var(--f-code);font-size:14.5px;line-height:1.6;background:var(--code-bg);border:1px solid var(--code-line);border-left:4px solid var(--ink);
+  border-radius:4px 12px 12px 4px;padding:12px 16px;margin:12px 0;overflow:auto;white-space:pre;tab-size:4;color:var(--ink-deep)}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.pair h4{margin:6px 0 0;font-size:15px}
+
+/* таблиця трасування */
+table.trace{border-collapse:collapse;margin:10px 0;background:#fff}
+table.trace th,table.trace td{border:1.5px solid var(--ink);padding:6px 10px;text-align:center}
+table.trace th{font-weight:600;font-size:15px;background:#E8ECF7}
+table.trace td:first-child{font-family:var(--f-hand);font-size:24px;color:var(--margin);width:56px}
+table.trace input{width:84px;border:0;border-bottom:2px dashed var(--ink-muted);background:transparent;text-align:center;font-family:var(--f-code);font-size:16px;padding:4px}
+table.trace input:focus{outline:none;border-bottom:2px solid var(--ink)}
+.line-input{width:100%;max-width:520px;border:0;border-bottom:2px solid var(--ink);background:transparent;font-family:var(--f-code);font-size:17px;padding:6px 2px}
+.line-input:focus{outline:none;border-bottom-color:var(--margin)}
+.num-input{width:90px;border:0;border-bottom:2px solid var(--ink);background:transparent;font-family:var(--f-head);font-size:22px;text-align:center;padding:4px}
+.num-input:focus{outline:none;border-bottom-color:var(--margin)}
+label.q{display:block;font-weight:600;margin:20px 0 8px}
+
+/* варіанти відповіді: маркер */
+.choice{display:flex;gap:12px;align-items:flex-start;padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;max-width:70ch}
+.choice input{appearance:none;width:20px;height:20px;border:2px solid var(--ink);border-radius:50%;margin:3px 0 0;flex:none;background:#fff}
+.choice input:checked{background:radial-gradient(circle,var(--ink) 45%,#fff 50%)}
+.choice:hover{background:#F3F5FB}
+.choice.on{background:linear-gradient(100deg,transparent 0 2px,var(--marker) 2px calc(100% - 6px),transparent calc(100% - 6px)),none;background-color:transparent}
+.choice .mono{font-family:var(--f-code)}
+
+/* редактор */
+.editor{border-radius:12px;overflow:hidden;border:2px solid var(--ink);background:var(--ink)}
+.editor .top{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;color:#C9D1F2;font-size:14px}
+.editor .top .btn{margin-left:auto;background:var(--marker);border-color:var(--marker);color:var(--ink)}
+.editor textarea{display:block;width:100%;min-height:270px;resize:vertical;border:0;margin:0;background:#20307A;color:#F1F4FF;
+  font-family:var(--f-code);font-size:14.5px;line-height:1.6;padding:14px 16px;tab-size:4;white-space:pre;overflow:auto;caret-color:var(--marker)}
+.editor textarea:focus{outline:none}
+.editor .out{background:#101A4A;color:#DDE6FF;font-family:var(--f-code);font-size:14px;padding:10px 16px;min-height:44px;white-space:pre-wrap;border-top:1px solid #2C3C8A}
+.editor .out.err{color:#FFB4AC}
+.editor .out:empty::before{content:"Натисни «Запустити», і тут з’явиться вивід програми";color:#7E8BC4;font-family:var(--f-body)}
+
+/* збери програму */
+.strips{list-style:none;padding:0;margin:12px 0;max-width:760px}
+.strips li{display:flex;align-items:center;gap:4px;background:#fff;border:1.5px solid var(--ink);border-radius:8px;margin:5px 0;padding:3px 4px}
+.strips li.cut{border-style:dashed;opacity:.5}
+.strips li.cut .t{text-decoration:line-through}
+.strips .t{flex:1;font-family:var(--f-code);font-size:14.5px;white-space:pre;overflow:auto;padding:4px 6px}
+.strips button{background:#F3F5FB;border:0;border-radius:6px;min-width:32px;height:30px;font-size:15px;color:var(--ink)}
+.strips button:hover{background:#E1E7F7}
+.strips button.cutb{padding:0 10px;font-size:14px}
+.run-out{font-family:var(--f-code);font-size:14px;background:#101A4A;color:#DDE6FF;border-radius:10px;padding:10px 16px;min-height:44px;white-space:pre-wrap;margin-top:8px}
+.run-out.err{color:#FFB4AC}
+.run-out:empty::before{content:"Тут з’явиться вивід зібраної програми";color:#7E8BC4;font-family:var(--f-body)}
+
+.pager{display:flex;justify-content:space-between;gap:10px;max-width:860px;margin:18px auto 0}
+.mobile-top{display:none}
+
+/* кінець */
+.finish{min-height:100vh;display:grid;place-items:center;padding:24px}
+.finish .page{min-height:auto;max-width:560px;width:100%;text-align:left}
+.stamp{display:inline-block;font-family:var(--f-head);font-weight:700;color:var(--margin);border:3px solid var(--margin);border-radius:10px;padding:6px 16px;transform:rotate(-4deg);font-size:24px;margin-bottom:12px}
+.stamp.in{animation:stamp .5s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes stamp{from{transform:rotate(-4deg) scale(1.8);opacity:0}to{transform:rotate(-4deg) scale(1);opacity:1}}
+.score{font-family:var(--f-head);font-size:48px;margin:6px 0}
+
+/* мобільні та планшети */
+@media (max-width:900px){
+  .work{grid-template-columns:minmax(0,1fr)}
+  .rail .head > div:first-child{flex:1 1 100%}
+  .rail{position:static;height:auto;padding:14px 16px;gap:10px}
+  .rail .var b{font-size:34px}
+  .rail .toc{display:flex;gap:6px;overflow-x:auto;border:0;padding-bottom:4px}
+  .rail .toc li{flex:none}
+  .rail .toc button{grid-template-columns:auto auto;border:1.5px solid rgba(255,255,255,.3);border-radius:999px;padding:4px 12px 4px 4px;white-space:nowrap}
+  .rail .toc .ok{display:none}
+  .rail .head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .rail .clock{font-size:24px;margin-left:auto}
+  .rail .py{margin:0}
+  .page{padding:26px 18px 24px 58px}
+  .page::before{left:44px}
+  .page .margin{width:42px;font-size:18px}
+  .page .margin big{font-size:30px}
+  .pair{grid-template-columns:minmax(0,1fr)}
+  .rail .toc{max-width:100%}
+  .page-wrap{padding-left:10px;padding-right:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= Обкладинка ================= -->
+<main id="scr-start" class="cover-wrap">
+  <div class="cover">
+    <h1>Зошит шифрувальника</h1>
+    <p class="sub">Самостійна робота з функцій у Python. Рівень 1 курсу «Functions in Python».</p>
+    <div class="label">
+      <div class="title">Зошит для самостійних робіт</div>
+      <div class="row"><span>учня (учениці)</span><input id="in-name" class="field" autocomplete="off" aria-label="Ім’я та прізвище" placeholder="ім’я та прізвище"></div>
+      <div class="row"><span>класу</span><input id="in-cls" class="field" autocomplete="off" aria-label="Клас" placeholder="наприклад, 7-А" style="max-width:180px"></div>
+    </div>
+    <p class="rules">На роботу <b id="dur-txt">40 хвилин</b>: сім завдань і одне бонусне. Відповіді зберігаються самі. Якщо сторінка закриється, відкрий її знову і введи ті самі ім’я та клас. Виходи зі сторінки під час роботи бачить учитель.</p>
+    <div id="start-msg" class="msg hidden"></div>
+    <button id="btn-start" class="btn">Отримати свій варіант</button>
+  </div>
+</main>
+
+<!-- ================= Робота ================= -->
+<div id="scr-work" class="work hidden">
+  <aside class="rail">
+    <div class="head">
+      <div><div class="who" id="who"></div><div class="cls" id="who-cls"></div></div>
+      <div class="var"><b id="var-n"></b><span>варіант</span></div>
+      <div class="clock" id="clock" aria-live="off">40:00<small>залишилось</small></div>
+    </div>
+    <ul class="toc" id="toc"></ul>
+    <div class="py" id="py-status">Python завантажується…</div>
+    <button class="btn submit" id="btn-submit">Здати роботу</button>
+  </aside>
+  <div class="page-wrap">
+    <article class="page" id="page"></article>
+    <div class="pager">
+      <button class="btn line" id="btn-prev">Попереднє завдання</button>
+      <button class="btn line" id="btn-next">Наступне завдання</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Здано ================= -->
+<main id="scr-done" class="finish hidden">
+  <article class="page">
+    <div class="stamp" id="stamp">Здано</div>
+    <h2 id="done-title">Роботу перевіряє вчитель</h2>
+    <div id="done-score"></div>
+    <div id="done-msg" class="msg">Надсилаю роботу…</div>
+    <p class="hint">Пояснення, які ти написав своїми словами, учитель прочитає окремо.</p>
+  </article>
+</main>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+const CFG = Object.assign({SCRIPT_URL: ""}, window.CONFIG || {});
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm = s => String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+const LS = "ft2:";
+
+/* ================= Python у фоновому потоці ================= */
+const WORKER_SRC = `
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js");
+let py = null;
+const ready = loadPyodide().then(p => { py = p; postMessage({type:"ready"}); })
+  .catch(e => postMessage({type:"fail", error:String(e)}));
+onmessage = async (ev) => {
+  const {id, code, harness} = ev.data;
+  await ready;
+  let out = "";
+  const dec = new TextDecoder();
+  const sink = { write: (buf) => { out += dec.decode(buf, {stream:true}); return buf.length; } };
+  py.setStdout(sink); py.setStderr(sink);
+  const ns = py.globals.get("dict")();
+  let error = null, result = null;
+  try { py.runPython(code, {globals: ns}); }
+  catch (e) { error = String(e.message || e).trim().split("\\n").filter(Boolean).slice(-1)[0]; }
+  try { py.runPython("import sys\\nsys.stdout.flush()\\nsys.stderr.flush()"); } catch (e) {}
+  if (harness) { try { result = py.runPython(harness, {globals: ns}); } catch (e) { result = null; } }
+  ns.destroy();
+  out += dec.decode();
+  postMessage({type:"done", id, out, error, result: result == null ? null : String(result)});
+};`;
+let worker = null, pyReady = false, waiters = [], pending = new Map(), seq = 0;
+function setPy(t){ $("#py-status").textContent = t; }
+function startWorker(){
+  pyReady = false;
+  worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], {type: "text/javascript"})));
+  worker.onmessage = ev => {
+    const m = ev.data;
+    if (m.type === "ready") { pyReady = true; setPy("Python готовий"); waiters.splice(0).forEach(f => f()); }
+    else if (m.type === "fail") setPy("Python не завантажився. Перевір інтернет і онови сторінку.");
+    else if (m.type === "done") { const p = pending.get(m.id); if (p) { pending.delete(m.id); clearTimeout(p.t); p.res(m); } }
+  };
+}
+const whenReady = () => pyReady ? Promise.resolve() : new Promise(r => waiters.push(r));
+async function runPy(code, harness = null, timeout = 4000){
+  await whenReady();
+  return new Promise(res => {
+    const id = ++seq;
+    const t = setTimeout(() => {
+      pending.delete(id); worker.terminate(); setPy("Python перезапускається…"); startWorker();
+      res({out: "", error: "Програма працює занадто довго. Схоже на нескінченний цикл: перевір умову while і зміну i.", result: null});
+    }, timeout);
+    pending.set(id, {res, t});
+    worker.postMessage({id, code, harness});
+  });
+}
+
+/* ================= Сервер ================= */
+async function api(params){
+  const r = await fetch(CFG.SCRIPT_URL + "?" + new URLSearchParams(params), {redirect: "follow"});
+  return r.json();
+}
+async function apiPost(body){
+  const r = await fetch(CFG.SCRIPT_URL, {method: "POST", redirect: "follow",
+    headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(body)});
+  return r.json();
+}
+
+/* ================= Стан ================= */
+let S = null, T = null, cur = 0, timerId = null, offset = 0;
+const key = () => LS + norm(S.name) + "|" + norm(S.cls);
+const save = () => localStorage.setItem(key(), JSON.stringify(S));
+const A = k => (S.a[k] ??= {});
+
+function showMsg(el, text, kind){ el.textContent = text; el.className = "msg" + (kind ? " " + kind : ""); el.classList.remove("hidden"); }
+
+$("#dur-txt").textContent = "40 хвилин";
+if (!CFG.SCRIPT_URL) {
+  showMsg($("#start-msg"), "Сторінку ще не під’єднано до Google Таблиці. Учителю: вставте посилання на Apps Script у config.js.", "bad");
+  $("#btn-start").disabled = true;
+}
+
+$("#btn-start").onclick = async () => {
+  const name = $("#in-name").value.trim().replace(/\s+/g, " ");
+  const cls = $("#in-cls").value.trim().toUpperCase().replace(/\s+/g, "");
+  const msg = $("#start-msg");
+  if (name.split(" ").length < 2) return showMsg(msg, "Напиши ім’я та прізвище, наприклад «Олена Коваль».", "bad");
+  if (!cls) return showMsg(msg, "Напиши свій клас, наприклад «7-А».", "bad");
+  msg.classList.add("hidden");
+  const btn = $("#btn-start"); btn.disabled = true; btn.textContent = "Отримую варіант…";
+  try {
+    const r = await api({action: "start", name, cls});
+    if (r.error) throw new Error(r.error);
+    offset = r.now - Date.now();
+    const saved = JSON.parse(localStorage.getItem(LS + norm(name) + "|" + norm(cls)) || "null");
+    S = saved && saved.variant === r.variant ? saved : {name, cls, variant: r.variant, leaves: 0, a: {}, submitted: false};
+    S.started = r.started; S.duration = r.durationMin;
+    T = r.task;
+    if (r.submitted || S.submitted) { S.submitted = true; save(); return showDone(); }
+    save(); enterWork();
+  } catch (e) {
+    showMsg(msg, "Не вдалося отримати варіант. Перевір інтернет і натисни ще раз.", "bad");
+    btn.disabled = false; btn.textContent = "Отримати свій варіант";
+  }
+};
+["#in-name", "#in-cls"].forEach(s => $(s).addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-start").click(); }));
+
+function enterWork(){
+  $("#scr-start").classList.add("hidden"); $("#scr-work").classList.remove("hidden");
+  $("#who").textContent = S.name; $("#who-cls").textContent = S.cls + " клас";
+  $("#var-n").textContent = S.variant;
+  if (!worker) startWorker();
+  render(); tick(); timerId = setInterval(tick, 1000);
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden && S && T && !S.submitted) { S.leaves++; save(); } });
+function tick(){
+  const left = Math.max(0, S.started + S.duration * 60000 - (Date.now() + offset));
+  const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+  const c = $("#clock");
+  c.firstChild.nodeValue = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  c.classList.toggle("low", left < 5 * 60000);
+  if (left <= 0 && !S.submitted) submit(true);
+}
+
+/* ================= Завдання ================= */
+const TASKS = [
+  {id: "t1", title: "Трасування", pts: 4},
+  {id: "t2", title: "Передбач і поясни", pts: 2, plus: true},
+  {id: "t3", title: "Ти — шифрувальник", pts: 4},
+  {id: "t4", title: "Нові вимоги", pts: 4, plus: true},
+  {id: "t5", title: "Код-рев’ю", pts: 3, plus: true},
+  {id: "t6", title: "Збери програму", pts: 3},
+  {id: "t7", title: "Нова задача", pts: 4},
+  {id: "t8", title: "Бонус: свій шифр", pts: 3, bonus: true},
+];
+function isDone(id){
+  const a = S.a[id] || {};
+  switch (id) {
+    case "t1": return !!(a.out || "").trim() && (a.rows || []).filter(r => r && String(r.i ?? "").trim() && String(r.ch ?? "").trim()).length === 4;
+    case "t2": return a.opt != null && !!(a.why || "").trim();
+    case "t5": return String(a.ca ?? "").trim() !== "" && String(a.cb ?? "").trim() !== "" && a.opt != null && !!(a.why || "").trim();
+    case "t6": return !!a.touched;
+    case "t8": return !!(a.cipher && a.plain && a.ran);
+    default: return !!a.ran;
+  }
+}
+function renderToc(){
+  $("#toc").innerHTML = TASKS.map((t, i) =>
+    `<li class="${isDone(t.id) ? "done" : ""}"><button data-i="${i}" aria-current="${i === cur}">
+      <span class="n">${t.bonus ? "★" : i + 1}</span><span>${t.title}</span><span class="ok" aria-label="виконано">✓</span></button></li>`).join("");
+  $("#toc").querySelectorAll("button").forEach(b => b.onclick = () => go(+b.dataset.i));
+}
+const refreshToc = () => $("#toc").querySelectorAll("li").forEach((li, i) => li.classList.toggle("done", isDone(TASKS[i].id)));
+function go(i){ cur = i; render(); window.scrollTo({top: 0}); $("#page").focus({preventScroll: true}); }
+function render(){
+  renderToc();
+  const t = TASKS[cur];
+  $("#page").innerHTML = `<div class="margin"><big>${t.bonus ? "★" : cur + 1}</big>${t.pts} б${t.plus ? "<small>+ пояс&shy;нення</small>" : ""}</div>` + VIEW[t.id]();
+  $("#page").tabIndex = -1;
+  BIND[t.id]();
+  $("#btn-prev").style.visibility = cur ? "visible" : "hidden";
+  $("#btn-next").style.visibility = cur < TASKS.length - 1 ? "visible" : "hidden";
+}
+$("#btn-prev").onclick = () => go(cur - 1);
+$("#btn-next").onclick = () => go(cur + 1);
+
+function editor(id, start, note){
+  const a = A(id); if (a.code == null) a.code = start;
+  return `<div class="editor"><div class="top"><span>${note || "Tab — відступ на 4 пробіли"}</span>
+    <button class="btn sm" id="run-${id}">Запустити</button></div>
+    <textarea id="ed-${id}" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Редактор коду">${esc(a.code)}</textarea>
+    <div class="out" id="out-${id}" aria-live="polite">${esc(a.lastOut || "")}</div></div>`;
+}
+function bindEditor(id){
+  const ta = $("#ed-" + id), a = A(id);
+  const put = s => { ta.setRangeText(s, ta.selectionStart, ta.selectionEnd, "end"); a.code = ta.value; save(); };
+  ta.addEventListener("input", () => { a.code = ta.value; save(); });
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); put("    "); }
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      const line = ta.value.slice(0, ta.selectionStart).split("\n").pop();
+      let ind = line.match(/^ */)[0]; if (/:\s*$/.test(line)) ind += "    ";
+      put("\n" + ind);
+    } else if (e.key === "Backspace" && ta.selectionStart === ta.selectionEnd) {
+      const p = ta.selectionStart, line = ta.value.slice(0, p).split("\n").pop();
+      if (line.length && /^ +$/.test(line) && line.length % 4 === 0) { e.preventDefault(); ta.setRangeText("", p - 4, p, "end"); a.code = ta.value; save(); }
+    }
+  });
+  $("#run-" + id).onclick = async () => {
+    const out = $("#out-" + id); out.classList.remove("err"); out.textContent = "Виконую…";
+    const r = await runPy(a.code);
+    const txt = (r.out || "") + (r.error ? (r.out ? "\n" : "") + "Помилка: " + r.error : "");
+    out.textContent = txt; out.classList.toggle("err", !!r.error);
+    a.lastOut = txt; a.ran = true; save(); refreshToc();
+  };
+}
+function bindInput(sel, obj, field){ const el = $(sel); el && el.addEventListener("input", () => { obj[field] = el.value; save(); refreshToc(); }); }
+const choices = (name, opts, sel, mono) => opts.map((o, i) =>
+  `<label class="choice ${sel === i ? "on" : ""}"><input type="radio" name="${name}" value="${i}" ${sel === i ? "checked" : ""}><span class="${mono ? "mono" : ""}">${esc(o)}</span></label>`).join("");
+function bindChoices(name, obj){
+  document.querySelectorAll(`input[name=${name}]`).forEach(inp => inp.addEventListener("change", () => {
+    obj.opt = +inp.value; save(); refreshToc();
+    document.querySelectorAll(`input[name=${name}]`).forEach(x => x.closest(".choice").classList.toggle("on", x.checked));
+  }));
+}
+
+const VIEW = {
+  t1(){
+    const t = T.t1, a = A("t1"); a.rows ??= [{}, {}, {}, {}];
+    return `<h2>Простеж програму</h2>
+    <p class="lead">Не запускай цей код. Пройди його в голові або на чернетці й заповни таблицю для перших чотирьох проходів циклу.</p>
+    <pre class="code">${esc(t.code)}</pre>
+    <p class="hint">У рядку <code>message</code> ${t.len} символів.</p>
+    <table class="trace"><thead><tr><th>Прохід</th><th>i</th><th>message[i]</th></tr></thead><tbody>
+    ${[0, 1, 2, 3].map(k => `<tr><td>${k + 1}</td>
+      <td><input data-k="${k}" data-f="i" inputmode="numeric" aria-label="i, прохід ${k + 1}" value="${esc(a.rows[k].i)}"></td>
+      <td><input data-k="${k}" data-f="ch" maxlength="1" aria-label="message[i], прохід ${k + 1}" value="${esc(a.rows[k].ch)}"></td></tr>`).join("")}
+    </tbody></table>
+    <label class="q" for="t1-out">Що надрукує програма?</label>
+    <input id="t1-out" class="line-input" autocomplete="off" value="${esc(a.out)}">`;
+  },
+  t2(){
+    const t = T.t2, a = A("t2");
+    return `<h2>Передбач і поясни</h2>
+    <p class="lead">У цій функції є пастка. Прочитай код так, як його виконуватиме Python: рядок за рядком.</p>
+    <pre class="code">${esc(t.code)}</pre>
+    <h3>${esc(t.question)}</h3>${choices("t2o", t.options, a.opt, true)}
+    <label class="q" for="t2-why">${esc(t.explain)}</label>
+    <textarea id="t2-why" class="box" rows="3">${esc(a.why)}</textarea>`;
+  },
+  t3(){
+    const t = T.t3;
+    return `<h2>Тепер шифруєш ти</h2>
+    <p class="lead">Агенти розшифровують повідомлення функцією <code>decode</code>. Вона вже є в редакторі.</p>
+    <p>Напиши функцію <code>encode(character)</code>, яка робить зворотне: шифрує символ так, щоб <code>decode(encode(c))</code> повертало той самий <code>c</code>. Потім зашифруй нею фразу <code>"${esc(t.phrase)}"</code> і надрукуй результат в один рядок.</p>
+    <p class="hint">Твою <code>encode</code> перевірять ще й на іншій фразі, тож вона має працювати для будь-якого тексту.</p>
+    ${editor("t3", t.decode + "\n\n\ndef encode(character):\n    # твій код\n\n\n# зашифруй фразу і надрукуй:\n")}`;
+  },
+  t4(){
+    const t = T.t4, a = A("t4");
+    return `<h2>Шифр змінився</h2>
+    <p class="lead">Програма вміє розшифровувати <code>message</code>. Тепер прийшла відповідь <code>reply</code>, і правила стали іншими:</p>
+    <ul>${t.news.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
+    <p>Зміни програму так, щоб у першому рядку виводилося розшифроване <code>message</code>, а в другому — розшифрована <code>reply</code>. Що менше коду зміниш, то краще.</p>
+    ${editor("t4", t.start)}
+    <label class="q" for="t4-why">Що саме ти змінив? Чому для нових правил достатньо було оновити функцію?</label>
+    <textarea id="t4-why" class="box" rows="3">${esc(a.why)}</textarea>`;
+  },
+  t5(){
+    const t = T.t5, a = A("t5");
+    return `<h2>Перевір код однокласників</h2>
+    <p class="lead">Двоє учнів розв’язали одну задачу. Обидві програми друкують однаковий результат.</p>
+    <div class="pair"><div><h4>Рішення А</h4><pre class="code">${esc(t.code_a)}</pre></div>
+    <div><h4>Рішення Б</h4><pre class="code">${esc(t.code_b)}</pre></div></div>
+    <p>З’явилося нове правило: <b>${esc(t.new_rule)}</b>.</p>
+    <label class="q" for="t5-ca">У скількох місцях треба дописати це правило в рішенні А?</label>
+    <input id="t5-ca" class="num-input" inputmode="numeric" value="${esc(a.ca)}">
+    <label class="q" for="t5-cb">А в рішенні Б?</label>
+    <input id="t5-cb" class="num-input" inputmode="numeric" value="${esc(a.cb)}">
+    <h3>Яке рішення краще і чому?</h3>${choices("t5o", t.options, a.opt, false)}
+    <label class="q" for="t5-why">Придумай свою ситуацію, де функція врятує програміста від помилки.</label>
+    <textarea id="t5-why" class="box" rows="3">${esc(a.why)}</textarea>`;
+  },
+  t6(){
+    const t = T.t6, a = A("t6");
+    a.items ??= t.pieces.map((p, k) => ({k, ind: 0, cut: false}));
+    return `<h2>Збери програму</h2>
+    <p class="lead">Рядки робочої програми розрізали й перемішали. Шифр такий: ${esc(t.rule)}${t.reverse ? ", а повідомлення записане задом наперед" : ""}.</p>
+    <p class="hint">Кнопками ↑ ↓ став рядки на місце, ← → змінюй відступ. Два рядки тут зайві: прибери їх кнопкою «Зайвий». Зібрана програма має надрукувати розшифроване повідомлення.</p>
+    <ul class="strips" id="strips">${a.items.map((it, pos) => `<li class="${it.cut ? "cut" : ""}" data-p="${pos}">
+      <button data-a="up" aria-label="Вище">↑</button><button data-a="down" aria-label="Нижче">↓</button>
+      <button data-a="left" aria-label="Менший відступ">←</button><button data-a="right" aria-label="Більший відступ">→</button>
+      <span class="t">${"    ".repeat(it.ind)}${esc(t.pieces[it.k].t)}</span>
+      <button class="cutb" data-a="cut">${it.cut ? "Повернути" : "Зайвий"}</button></li>`).join("")}</ul>
+    <button class="btn sm" id="run-t6">Запустити зібрану програму</button>
+    <div class="run-out" id="out-t6" aria-live="polite">${esc(a.lastOut || "")}</div>`;
+  },
+  t7(){
+    const t = T.t7;
+    return `<h2>Та сама навичка, інша задача</h2>
+    <p class="lead">Тут немає шифрів. Але функція працює так само: отримує один символ і повертає, що з ним зробити.</p>
+    <p>${t.text}</p>
+    <p>Наприклад, <code>"${esc(t.example.in)}"</code> має перетворитися на <code>"${esc(t.example.out)}"</code>.</p>
+    <p class="hint">Функцію перевірять ще на кількох рядках, тож не підганяй її під один приклад.</p>
+    ${editor("t7", t.start)}`;
+  },
+  t8(){
+    const a = A("t8");
+    return `<h2>Бонус: придумай свій шифр</h2>
+    <p class="lead">Вигадай власне правило шифрування, в якому щонайменше дві умови: наприклад, заміна літери і символ-шум.</p>
+    <p>Напиши функцію <code>decode(character)</code>, яка розшифровує твій шифр, і зашифруй нею фразу. Учитель може дати твоє повідомлення однокласнику: чи зламає він шифр?</p>
+    ${editor("t8", "def decode(character):\n    # твої правила\n\n\nsecret = \"\"\nfor ch in secret:\n    print(decode(ch), end=\"\")\n")}
+    <label class="q" for="t8-cipher">Зашифрована фраза (те, що в <code>secret</code>)</label>
+    <input id="t8-cipher" class="line-input" autocomplete="off" value="${esc(a.cipher)}">
+    <label class="q" for="t8-plain">Що має вийти після розшифрування</label>
+    <input id="t8-plain" class="line-input" autocomplete="off" value="${esc(a.plain)}">
+    <label class="q" for="t8-hint">Підказка для того, хто ламатиме</label>
+    <input id="t8-hint" class="line-input" autocomplete="off" style="font-family:var(--f-body)" value="${esc(a.hint)}">`;
+  },
+};
+const BIND = {
+  t1(){ const a = A("t1");
+    document.querySelectorAll("table.trace input").forEach(inp => inp.addEventListener("input", () => { a.rows[+inp.dataset.k][inp.dataset.f] = inp.value; save(); refreshToc(); }));
+    bindInput("#t1-out", a, "out"); },
+  t2(){ const a = A("t2"); bindChoices("t2o", a); bindInput("#t2-why", a, "why"); },
+  t3(){ bindEditor("t3"); },
+  t4(){ bindEditor("t4"); bindInput("#t4-why", A("t4"), "why"); },
+  t5(){ const a = A("t5"); bindChoices("t5o", a); bindInput("#t5-ca", a, "ca"); bindInput("#t5-cb", a, "cb"); bindInput("#t5-why", a, "why"); },
+  t6(){ const a = A("t6");
+    $("#strips").querySelectorAll("button").forEach(b => b.onclick = () => {
+      const p = +b.closest("li").dataset.p, it = a.items[p], act = b.dataset.a;
+      if (act === "up" && p > 0) [a.items[p - 1], a.items[p]] = [a.items[p], a.items[p - 1]];
+      if (act === "down" && p < a.items.length - 1) [a.items[p + 1], a.items[p]] = [a.items[p], a.items[p + 1]];
+      if (act === "left") it.ind = Math.max(0, it.ind - 1);
+      if (act === "right") it.ind = Math.min(3, it.ind + 1);
+      if (act === "cut") it.cut = !it.cut;
+      a.touched = true; save(); render();
+      const again = $(`#strips li[data-p="${act === "up" ? p - 1 : act === "down" ? p + 1 : p}"] button[data-a="${act}"]`);
+      again && again.focus();
+    });
+    $("#run-t6").onclick = async () => {
+      const out = $("#out-t6"); out.classList.remove("err"); out.textContent = "Виконую…";
+      const r = await runPy(parsons(a));
+      const txt = (r.out || "") + (r.error ? (r.out ? "\n" : "") + "Помилка: " + r.error : "");
+      out.textContent = txt; out.classList.toggle("err", !!r.error); a.lastOut = txt; a.touched = true; save(); refreshToc();
+    }; },
+  t7(){ bindEditor("t7"); },
+  t8(){ const a = A("t8"); bindEditor("t8"); bindInput("#t8-cipher", a, "cipher"); bindInput("#t8-plain", a, "plain"); bindInput("#t8-hint", a, "hint"); },
+};
+const parsons = a => (a.items || []).filter(it => !it.cut).map(it => "    ".repeat(it.ind) + T.t6.pieces[it.k].t).join("\n");
+
+/* ================= Здача ================= */
+// Браузер лише запускає код учня на вхідних даних. Правильних відповідей тут немає:
+// результати порівнює сервер.
+const py = s => JSON.stringify(String(s));
+async function collectRuns(){
+  const a = S.a, runs = {};
+  { const code = (a.t3 || {}).code || "";
+    const h = `import json\ndef __e(p):\n    try:\n        return "".join(encode(c) for c in p)\n    except Exception:\n        return None\ndef __b(p):\n    try:\n        return "".join(decode(encode(c)) for c in p)\n    except Exception:\n        return None\njson.dumps({"enc": [__e(${py(T.t3.phrase)}), __e(${py(T.t3.hidden)})], "back": [__b(${py(T.t3.phrase)}), __b(${py(T.t3.hidden)})]})`;
+    const r = await runPy(code, h); let x = {}; try { x = JSON.parse(r.result || "{}"); } catch (e) {}
+    runs.t3 = {enc: x.enc || [], back: x.back || [], out: r.out || "", error: r.error}; }
+  { const r = await runPy((a.t4 || {}).code || ""); runs.t4 = {out: r.out || "", error: r.error}; }
+  { runs.t6code = parsons(a.t6 || {}); const r = await runPy(runs.t6code); runs.t6 = {out: r.out || "", error: r.error}; }
+  { const fn = T.t7.fname;
+    const h = `import json\ndef __t(s):\n    try:\n        return "".join(${fn}(c) for c in s)\n    except Exception:\n        return None\njson.dumps([__t(s) for s in ${JSON.stringify(T.t7.inputs)}])`;
+    const r = await runPy((a.t7 || {}).code || "", h); let x = []; try { x = JSON.parse(r.result || "[]"); } catch (e) {}
+    runs.t7 = {res: x}; }
+  { const x = a.t8 || {};
+    if (x.code && x.cipher) {
+      const h = `try:\n    __r = "".join(decode(c) for c in ${py(x.cipher)})\nexcept Exception:\n    __r = ""\n__r`;
+      const r = await runPy(x.code, h); runs.t8 = {res: r.result || ""};
+    } }
+  return runs;
+}
+async function submit(auto){
+  if (S.submitted) return;
+  if (!auto && !confirm("Здати роботу? Після цього змінити відповіді вже не вийде.")) return;
+  clearInterval(timerId);
+  const b = $("#btn-submit"); b.disabled = true; b.textContent = "Готую роботу…";
+  setPy("Запускаю твій код для перевірки…");
+  const runs = await collectRuns();
+  S.payload = {action: "submit", name: S.name, cls: S.cls, variant: S.variant, leaves: S.leaves, autoSubmit: !!auto, answers: S.a, runs};
+  S.submitted = true; S.sent = false; save();
+  showDone();
+}
+$("#btn-submit").onclick = () => submit(false);
+
+async function send(){
+  const msg = $("#done-msg");
+  try {
+    const r = await apiPost(S.payload);
+    if (r.error) throw new Error(r.error);
+    S.sent = true; S.reply = r; save(); showSent();
+  } catch (e) {
+    showMsg(msg, "Немає зв’язку з учителем. Не закривай сторінку: надішлю ще раз за 5 секунд.", "bad");
+    setTimeout(send, 5000);
+  }
+}
+function showSent(){
+  showMsg($("#done-msg"), "Роботу отримано. Можна закрити сторінку.", "good");
+  const r = S.reply || {};
+  if (r.auto != null) $("#done-score").innerHTML = `<div class="score">${r.auto} з 24</div><p class="hint">Автоматичний бал${r.bonus ? `, і ще ${r.bonus} бонусних` : ""}.</p>`;
+}
+function showDone(){
+  $("#scr-start").classList.add("hidden"); $("#scr-work").classList.add("hidden"); $("#scr-done").classList.remove("hidden");
+  $("#stamp").classList.add("in");
+  if (S.sent || !S.payload) { S.sent = true; save(); showSent(); }
+  else send();
+}
+</script>
+</body>
+</html>

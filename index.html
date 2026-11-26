@@ -431,7 +431,9 @@ function bindEditor(id){
   $("#run-" + id).onclick = async () => {
     const out = $("#out-" + id); out.classList.remove("err"); out.textContent = "Виконую…";
     const r = await runPy(a.code);
-    const txt = (r.out || "") + (r.error ? (r.out ? "\n" : "") + "Помилка: " + r.error : "");
+    let txt = (r.out || "") + (r.error ? (r.out ? "\n" : "") + "Помилка: " + r.error : "");
+    if (r.error && /[а-яіїєґ]/i.test(a.code.replace(/#.*$/gm, "").replace(/"[^"\n]*"|'[^'\n]*'/g, "")))
+      txt += "\nПідказка: у коді поза лапками є українські літери. Перевір розкладку клавіатури.";
     out.textContent = txt; out.classList.toggle("err", !!r.error);
     a.lastOut = txt; a.ran = true; save(); refreshToc();
   };
@@ -458,6 +460,7 @@ const VIEW = {
       <td><input data-k="${k}" data-f="i" inputmode="numeric" aria-label="i, прохід ${k + 1}" value="${esc(a.rows[k].i)}"></td>
       <td><input data-k="${k}" data-f="ch" maxlength="1" aria-label="message[i], прохід ${k + 1}" value="${esc(a.rows[k].ch)}"></td></tr>`).join("")}
     </tbody></table>
+    <div id="t1-cyr" class="msg bad hidden">Здається, ти пишеш українською розкладкою. Літери в коді англійські: перемкни розкладку (Alt+Shift або Win+Пробіл).</div>
     <label class="q" for="t1-out">Що надрукує програма?</label>
     <input id="t1-out" class="line-input" autocomplete="off" value="${esc(a.out)}">`;
   },
@@ -542,8 +545,9 @@ const VIEW = {
 };
 const BIND = {
   t1(){ const a = A("t1");
-    document.querySelectorAll("table.trace input").forEach(inp => inp.addEventListener("input", () => { a.rows[+inp.dataset.k][inp.dataset.f] = inp.value; save(); refreshToc(); }));
-    bindInput("#t1-out", a, "out"); },
+    const cyr = () => $("#t1-cyr").classList.toggle("hidden", ![...document.querySelectorAll("table.trace input, #t1-out")].some(x => /[а-яіїєґ]/i.test(x.value)));
+    document.querySelectorAll("table.trace input").forEach(inp => inp.addEventListener("input", () => { a.rows[+inp.dataset.k][inp.dataset.f] = inp.value; save(); refreshToc(); cyr(); }));
+    bindInput("#t1-out", a, "out"); $("#t1-out").addEventListener("input", cyr); cyr(); },
   t2(){ const a = A("t2"); bindChoices("t2o", a); bindInput("#t2-why", a, "why"); },
   t3(){ bindEditor("t3"); },
   t4(){ bindEditor("t4"); bindInput("#t4-why", A("t4"), "why"); },
